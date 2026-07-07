@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phishing Detection Study — AI Analyst Case File</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #14171F;
+    --ink-raised: #1C2029;
+    --paper: #F2EEE4;
+    --paper-dim: #E5E0D3;
+    --amber: #D98E3D;
+    --signal-red: #C24545;
+    --sage: #7A8B7A;
+    --line: rgba(242, 238, 228, 0.12);
+    --text-dim: rgba(242, 238, 228, 0.55);
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'Inter', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+  }
+
+  .masthead {
+    border-bottom: 1px solid var(--line);
+    padding: 28px 32px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .masthead-title {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .masthead-title span { color: var(--amber); }
+
+  .masthead-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    min-height: calc(100vh - 89px);
+  }
+
+  @media (max-width: 880px) {
+    .workspace { grid-template-columns: 1fr; }
+  }
+
+  .pane { padding: 28px 32px; }
+
+  .pane-intake {
+    border-right: 1px solid var(--line);
+  }
+
+  .pane-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 220px;
+    background: var(--ink-raised);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 16px;
+    resize: vertical;
+  }
+
+  textarea:focus {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  textarea::placeholder { color: var(--text-dim); }
+
+  .label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+
+  .btn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 3px;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: transform 0.08s ease, opacity 0.15s ease;
+  }
+
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--amber);
+    color: var(--ink);
+    margin-top: 16px;
+  }
+
+  .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--sage);
+    border: 1px solid var(--sage);
+    width: 100%;
+    margin-top: 18px;
+  }
+
+  .btn-secondary:hover:not(:disabled) { background: rgba(122, 139, 122, 0.1); }
+
+  .verdict-card {
+    margin-top: 22px;
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 4px;
+    padding: 20px;
+    display: none;
+  }
+
+  .verdict-card.visible { display: block; }
+
+  .verdict-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--paper-dim);
+  }
+
+  .verdict-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 3px;
+  }
+
+  .verdict-tag.phish { background: var(--signal-red); color: var(--paper); }
+  .verdict-tag.suspicious { background: var(--amber); color: var(--ink); }
+  .verdict-tag.clean { background: var(--sage); color: var(--ink); }
+
+  .verdict-score {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink);
+    opacity: 0.6;
+  }
+
+  .annotated-body {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.85;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .flag-span {
+    background: rgba(194, 69, 69, 0.18);
+    border-bottom: 2px solid var(--signal-red);
+    padding: 1px 2px;
+    cursor: help;
+    position: relative;
+  }
+
+  .flag-span:hover::after {
+    content: attr(data-flag);
+    position: absolute;
+    bottom: 130%;
+    left: 0;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    white-space: normal;
+    width: 220px;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+
+  .case-file {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .case-row {
+    background: var(--ink-raised);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--sage);
+    border-radius: 3px;
+    padding: 12px 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .case-row.phish { border-left-color: var(--signal-red); }
+  .case-row.suspicious { border-left-color: var(--amber); }
+
+  .case-row-id { color: var(--text-dim); }
+  .case-row-summary { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .empty-state {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 24px 0;
+    line-height: 1.7;
+  }
+
+  .report-section {
+    margin-top: 24px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    display: none;
+  }
+
+  .report-section.visible { display: block; }
+
+  .report-block {
+    margin-bottom: 20px;
+  }
+
+  .report-block h3 {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--amber);
+    margin-bottom: 10px;
+  }
+
+  .report-block h3.flaws-heading { color: var(--sage); }
+
+  .report-block p, .report-block li {
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: rgba(242, 238, 228, 0.85);
+  }
+
+  .report-block ul { padding-left: 18px; margin-top: 6px; }
+  .report-block li { margin-bottom: 8px; }
+
+  .loading-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--amber);
+  }
+
+  .count-badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-title">Case File <span>002</span> — AI Phishing Triage Study</div>
+  <div class="masthead-meta" id="emailCount">0 EMAILS LOGGED</div>
+</div>
+
+<div class="workspace">
+
+  <div class="pane pane-intake">
+    <div class="label-row">
+      <div class="pane-label">Intake — paste email source</div>
+    </div>
+    <textarea id="emailInput" placeholder="Paste the full email here — headers if you have them, sender address, subject line, and body. The more complete it is, the more the analyst has to work with."></textarea>
+    <button class="btn btn-primary" id="analyzeBtn" style="width:100%;">Run Analysis</button>
+
+    <div class="verdict-card" id="verdictCard">
+      <div class="verdict-header">
+        <span class="verdict-tag" id="verdictTag">—</span>
+        <span class="verdict-score" id="verdictScore">—</span>
+      </div>
+      <div class="annotated-body" id="annotatedBody"></div>
+    </div>
+  </div>
+
+  <div class="pane pane-casefile">
+    <div class="label-row">
+      <div class="pane-label">Case file — accumulated evidence</div>
+      <span class="count-badge" id="paneCount">0 logged</span>
+    </div>
+
+    <div class="case-file" id="caseFile">
+      <div class="empty-state" id="emptyState">No emails analyzed yet. Run your first one on the left — once you've logged a few (mix in at least one legitimate email), synthesize findings below to see the comparative report and the flaws log.</div>
+    </div>
+
+    <button class="btn btn-secondary" id="synthesizeBtn" disabled>Synthesize Findings (need 3+ logged)</button>
+
+    <div class="report-section" id="reportSection"></div>
+  </div>
+
+</div>
+
+<script>
+  const state = {
+    emails: [], // { id, rawText, verdict, score, flags: [{quoted_text, flag_type, reasoning}], analystNote }
+  };
+
+  const els = {
+    input: document.getElementById('emailInput'),
+    analyzeBtn: document.getElementById('analyzeBtn'),
+    verdictCard: document.getElementById('verdictCard'),
+    verdictTag: document.getElementById('verdictTag'),
+    verdictScore: document.getElementById('verdictScore'),
+    annotatedBody: document.getElementById('annotatedBody'),
+    caseFile: document.getElementById('caseFile'),
+    emptyState: document.getElementById('emptyState'),
+    synthesizeBtn: document.getElementById('synthesizeBtn'),
+    reportSection: document.getElementById('reportSection'),
+    emailCount: document.getElementById('emailCount'),
+    paneCount: document.getElementById('paneCount'),
+  };
+
+  // ---- Escaping helper: we inject model-cited substrings as HTML, so the
+  // raw email text must be escaped first or stray <, >, & in real phishing
+  // emails (often containing raw URLs) would break the markup.
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---- The core prompt. Structured JSON output, strict schema, and we
+  // explicitly ask the model to quote verbatim substrings rather than give
+  // offsets, since offset math is where models tend to drift.
+  function buildAnalysisPrompt(emailText) {
+    return `You are a cybersecurity analyst studying phishing detection patterns. Analyze the email below for phishing indicators.
+
+EMAIL TO ANALYZE:
+"""
+${emailText}
+"""
+
+Respond with ONLY a JSON object, no preamble, no markdown fences, matching this exact schema:
+
+{
+  "verdict": "phish" | "suspicious" | "clean",
+  "confidence_score": <integer 0-100, how confident you are in the verdict>,
+  "flags": [
+    {
+      "quoted_text": "<exact verbatim substring copied from the email above that triggered this flag, max ~12 words>",
+      "flag_type": "<short category, e.g. 'urgency language', 'domain mismatch', 'suspicious link', 'generic greeting', 'credential request'>",
+      "reasoning": "<one sentence on why this is suspicious>"
+    }
+  ],
+  "analyst_note": "<one or two sentences of overall reasoning for the verdict, written like a human analyst's case note>"
+}
+
+Important: "quoted_text" must be an EXACT substring that appears in the email above, character for character, so it can be located and highlighted. If the email is clean, return an empty flags array and explain why in analyst_note. Be honest about uncertainty -- if something is ambiguous, say so in the reasoning rather than overstating confidence.`;
+  }
+
+  async function callClaude(promptText) {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: promptText }],
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    const data = await response.json();
+    const textBlocks = data.content.filter(b => b.type === "text").map(b => b.text);
+    const fullText = textBlocks.join("\n").trim();
+    // Strip stray markdown fences in case the model adds them despite instructions
+    const cleaned = fullText.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
+    return JSON.parse(cleaned);
+  }
+
+  // ---- Takes raw email text + the flags array, returns HTML with each
+  // flagged substring wrapped in a highlighted span carrying a tooltip.
+  // We escape the whole body first, then do plain string replace on the
+  // *escaped* versions of both haystack and needle so entities line up.
+  function renderAnnotatedBody(rawText, flags) {
+    let escaped = escapeHtml(rawText);
+    flags.forEach((flag, i) => {
+      const escapedQuote = escapeHtml(flag.quoted_text);
+      if (escaped.includes(escapedQuote)) {
+        const tooltip = escapeHtml(`${flag.flag_type}: ${flag.reasoning}`);
+        const span = `<span class="flag-span" data-flag="${tooltip}">${escapedQuote}</span>`;
+        escaped = escaped.replace(escapedQuote, span); // first occurrence only
+      }
+      // If the model's quote doesn't match exactly (rare but possible),
+      // we silently skip highlighting that one rather than crashing --
+      // this itself is worth noting as a flaw in the synthesis step.
+    });
+    return escaped;
+  }
+
+  function updateCounts() {
+    els.emailCount.textContent = `${state.emails.length} EMAIL${state.emails.length === 1 ? '' : 'S'} LOGGED`;
+    els.paneCount.textContent = `${state.emails.length} logged`;
+    els.synthesizeBtn.disabled = state.emails.length < 3;
+    els.synthesizeBtn.textContent = state.emails.length < 3
+      ? `Synthesize Findings (need 3+ logged)`
+      : `Synthesize Findings (${state.emails.length} emails)`;
+  }
+
+  function addCaseRow(entry) {
+    if (els.emptyState) { els.emptyState.remove(); }
+    const row = document.createElement('div');
+    row.className = `case-row ${entry.verdict}`;
+    const preview = entry.rawText.replace(/\s+/g, ' ').slice(0, 60);
+    row.innerHTML = `
+      <span class="case-row-id">#${String(entry.id).padStart(3, '0')}</span>
+      <span class="case-row-summary">${escapeHtml(preview)}...</span>
+      <span class="verdict-tag ${entry.verdict}" style="font-size:10px;">${entry.verdict}</span>
+    `;
+    els.caseFile.appendChild(row);
+  }
+
+  els.analyzeBtn.addEventListener('click', async () => {
+    const text = els.input.value.trim();
+    if (!text) return;
+
+    els.analyzeBtn.disabled = true;
+    els.analyzeBtn.textContent = 'Analyzing...';
+    els.verdictCard.classList.remove('visible');
+
+    try {
+      const prompt = buildAnalysisPrompt(text);
+      const result = await callClaude(prompt);
+
+      const entry = {
+        id: state.emails.length + 1,
+        rawText: text,
+        verdict: result.verdict,
+        score: result.confidence_score,
+        flags: result.flags || [],
+        analystNote: result.analyst_note,
+      };
+      state.emails.push(entry);
+
+      // Render verdict card
+      els.verdictTag.textContent = entry.verdict;
+      els.verdictTag.className = `verdict-tag ${entry.verdict}`;
+      els.verdictScore.textContent = `confidence: ${entry.score}%`;
+      els.annotatedBody.innerHTML = renderAnnotatedBody(entry.rawText, entry.flags);
+      els.verdictCard.classList.add('visible');
+
+      addCaseRow(entry);
+      updateCounts();
+      els.input.value = '';
+    } catch (err) {
+      console.error(err);
+      els.annotatedBody.innerHTML = `<span style="color:var(--signal-red)">Analysis failed: ${escapeHtml(err.message)}. This itself is worth logging if it keeps happening.</span>`;
+      els.verdictCard.classList.add('visible');
+      els.verdictTag.textContent = 'error';
+      els.verdictTag.className = 'verdict-tag suspicious';
+    } finally {
+      els.analyzeBtn.disabled = false;
+      els.analyzeBtn.textContent = 'Run Analysis';
+    }
+  });
+
+  // ---- Synthesis: builds a single prompt containing every logged email's
+  // verdict + flags, and separately asks the model to self-critique its own
+  // earlier per-email judgments now that it can compare them side by side.
+  // This second ask is the whole point of the "flaws log" -- it's the model
+  // being handed its own prior outputs and asked where it might be wrong.
+  function buildSynthesisPrompt() {
+    const caseSummaries = state.emails.map(e => {
+      const flagList = e.flags.map(f => `    - [${f.flag_type}] "${f.quoted_text}" -- ${f.reasoning}`).join('\n');
+      return `EMAIL #${e.id} -- Verdict: ${e.verdict} (confidence ${e.score}%)\nAnalyst note: ${e.analystNote}\nFlags raised:\n${flagList || '    (none)'}\nFull text:\n"""${e.rawText}"""`;
+    }).join('\n\n---\n\n');
+
+    return `You are reviewing a batch of phishing-detection case files that were each analyzed independently (one at a time, without seeing the others). You now have all of them together. Below is each email, its verdict, its confidence score, and the specific flags raised at the time.
+
+${caseSummaries}
+
+Now produce a study-level synthesis. Respond with ONLY a JSON object, no preamble, matching this schema:
+
+{
+  "recurring_tactics": ["<pattern that showed up across multiple emails, as a short phrase>", ...],
+  "tactic_explanation": "<2-4 sentences describing how these tactics relate to each other and what they suggest about current phishing approaches>",
+  "clustering": "<1-3 sentences grouping which emails used similar tactics or appear to come from a similar playbook, referencing email numbers>",
+  "flaws_log": [
+    {
+      "issue": "<short label for a specific flaw in the AI's own prior analysis, e.g. 'overconfident on ambiguous urgency', 'inconsistent verdict on similar pattern', 'missed a flag obvious in hindsight'>",
+      "which_email": "<email number(s) this applies to>",
+      "explanation": "<2-3 sentences honestly explaining where your own earlier judgment was shaky, inconsistent with another verdict, or wrong, now that you can see everything side by side. Be genuinely self-critical here -- if a legitimate email got flagged or a verdict contradicts another similar case, say so plainly.>"
+    }
+  ],
+  "overall_reliability_note": "<3-4 sentences on what this batch suggests about the reliability and limits of using an LLM as a phishing detector -- where it seems to add real value over keyword matching, and where its judgment is shakiest>"
+}
+
+Be rigorous and honest in flaws_log specifically. The goal of this exercise is to find real weaknesses in AI-based phishing detection, not to defend your prior verdicts. If you cannot find at least one genuine flaw across this batch, look harder -- some inconsistency or overreach is almost always present in a batch this size.`;
+  }
+
+  function renderReport(report) {
+    const tacticsHtml = report.recurring_tactics.map(t => `<li>${escapeHtml(t)}</li>`).join('');
+    const flawsHtml = report.flaws_log.map(f => `
+      <li><strong>${escapeHtml(f.issue)}</strong> (Email ${escapeHtml(String(f.which_email))}) — ${escapeHtml(f.explanation)}</li>
+    `).join('');
+
+    els.reportSection.innerHTML = `
+      <div class="report-block">
+        <h3>Recurring Tactics</h3>
+        <ul>${tacticsHtml}</ul>
+        <p style="margin-top:10px;">${escapeHtml(report.tactic_explanation)}</p>
+      </div>
+      <div class="report-block">
+        <h3>Clustering</h3>
+        <p>${escapeHtml(report.clustering)}</p>
+      </div>
+      <div class="report-block">
+        <h3 class="flaws-heading">Flaws Log — self-critique</h3>
+        <ul>${flawsHtml}</ul>
+      </div>
+      <div class="report-block">
+        <h3 class="flaws-heading">Overall Reliability Note</h3>
+        <p>${escapeHtml(report.overall_reliability_note)}</p>
+      </div>
+    `;
+    els.reportSection.classList.add('visible');
+  }
+
+  els.synthesizeBtn.addEventListener('click', async () => {
+    if (state.emails.length < 3) return;
+    els.synthesizeBtn.disabled = true;
+    els.synthesizeBtn.textContent = 'Synthesizing...';
+    try {
+      const prompt = buildSynthesisPrompt();
+      const report = await callClaude(prompt);
+      renderReport(report);
+    } catch (err) {
+      console.error(err);
+      els.reportSection.innerHTML = `<p style="color:var(--signal-red);font-family:var(--font-mono);font-size:12px;">Synthesis failed: ${escapeHtml(err.message)}</p>`;
+      els.reportSection.classList.add('visible');
+    } finally {
+      updateCounts();
+    }
+  });
+</script>
+
+</body>
+</html>
